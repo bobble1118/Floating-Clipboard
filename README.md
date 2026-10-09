@@ -39,6 +39,7 @@ Put the exe somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\FloatingClipboard
 | Drag an item out | Copy it into another app |
 | Hover + **✕** or <kbd>Del</kbd> | Remove the item |
 | <kbd>↓</kbd> / <kbd>Enter</kbd> / double-click | Select / paste a history item |
+| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Pin / unpin the panel at its current position (accent border = pinned) |
 | <kbd>Esc</kbd> | Hide the panel |
 | Drag the panel's edge | Move it |
 
@@ -49,6 +50,7 @@ Holding <kbd>Alt</kbd> together with any other key (<kbd>Alt</kbd>+<kbd>Tab</kbd
 Right-click the tray icon (bottom-right of the taskbar):
 
 - **Start with Windows**: on by default (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
+- **Default position**: at the cursor, or the top-left corner of the screen (a pinned position takes priority)
 - **Alt hold time**: 0.3 / 0.45 / 0.6 / 0.8 s
 - **History limit**: 50 / 100 / 300 / 1000 items
 - **Clear history** / **Clear shelf** / **Quit**

@@ -186,8 +186,15 @@ namespace FloatingClipboard
             Root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             var dpi = VisualTreeHelper.GetDpi(this);
             var c = System.Windows.Forms.Cursor.Position;
-            Left = c.X / dpi.DpiScaleX - Root.DesiredSize.Width / 2;
-            Top = c.Y / dpi.DpiScaleY - Root.DesiredSize.Height / 2;
+            var wa = System.Windows.Forms.Screen.FromPoint(c).WorkingArea;
+            if (settings.PinX is double px && settings.PinY is double py) { Left = px; Top = py; }
+            else if (settings.Position == "Top-left") { Left = wa.Left / dpi.DpiScaleX + 12; Top = wa.Top / dpi.DpiScaleY + 12; }
+            else
+            {
+                Left = c.X / dpi.DpiScaleX - Root.DesiredSize.Width / 2;
+                Top = c.Y / dpi.DpiScaleY - Root.DesiredSize.Height / 2;
+            }
+            UpdatePinLook();
             Show();
             KeepOnScreen(); // ActualWidth is still 0 before the first show, so clamp again afterwards
             Native.ForceForeground(hwnd);
@@ -239,11 +246,35 @@ namespace FloatingClipboard
             Hide();
         }
 
-        void OnBackgroundDown(object s, MouseButtonEventArgs e) => DragMove();
+        void OnBackgroundDown(object s, MouseButtonEventArgs e)
+        {
+            DragMove(); // blocks until the mouse is released
+            if (settings.PinX != null) Pin(); // moving a pinned panel moves the pin
+        }
+
+        // Ctrl+P: remember the current position (shown with an accent border) or forget it
+        void TogglePin()
+        {
+            if (settings.PinX != null) settings.PinX = settings.PinY = null;
+            else Pin();
+            settings.Save();
+            UpdatePinLook();
+        }
+
+        void Pin()
+        {
+            settings.PinX = Left;
+            settings.PinY = Top;
+            settings.Save();
+        }
+
+        void UpdatePinLook() =>
+            Root.BorderBrush = new SolidColorBrush(settings.PinX != null ? Color.FromArgb(0xC0, 0x78, 0xAA, 0xFF) : Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
 
         void OnPreviewKey(object s, KeyEventArgs e)
         {
             if (e.Key == Key.Escape) Hide();
+            else if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control) TogglePin();
             else if (e.Key == Key.Enter && HistoryPanel.IsVisible && !Shelf.IsKeyboardFocusWithin) Paste(Selected(History));
             else if (e.Key == Key.Down && Search.IsKeyboardFocused)
                 (History.ItemContainerGenerator.ContainerFromItem(History.SelectedItem) as ListBoxItem ?? (UIElement)History).Focus();

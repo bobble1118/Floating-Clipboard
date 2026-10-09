@@ -38,6 +38,8 @@ namespace FloatingClipboard
             menu.Items.Add(auto);
             menu.Items.Add(Choice("Alt hold time", new[] { 0.3, 0.45, 0.6, 0.8 }, v => $"{v} s", s.HoldSeconds,
                 v => { s.HoldSeconds = win.Alt.Hold = v; s.Save(); }));
+            menu.Items.Add(Choice("Default position", new[] { "Cursor", "Top-left" }, v => v, s.Position,
+                v => { s.Position = v; s.Save(); }));
             menu.Items.Add(Choice("History limit", new[] { 50, 100, 300, 1000 }, v => $"{v} items", s.MaxHistory,
                 v => { s.MaxHistory = v; s.Save(); win.TrimHistory(); }));
             menu.Items.Add(new WinForms.ToolStripSeparator());
@@ -86,6 +88,9 @@ namespace FloatingClipboard
         public bool Autostart { get; set; } = true;
         public double HoldSeconds { get; set; } = 0.45;
         public int MaxHistory { get; set; } = 300;
+        public string Position { get; set; } = "Cursor"; // "Cursor" or "Top-left"
+        public double? PinX { get; set; } // set by Ctrl+P; overrides Position
+        public double? PinY { get; set; }
 
         public static Settings Load()
         {
