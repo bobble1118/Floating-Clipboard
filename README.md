@@ -18,6 +18,17 @@
 - **Privacy**: anything marked by password managers as "do not record" (`ExcludeClipboardContentFromMonitorProcessing`) is skipped.
 - **Tray icon** with settings, and **starts with Windows** by default.
 
+## Download
+
+Grab the latest build from [Releases](https://github.com/bobble1118/Floating-Clipboard/releases/latest):
+
+| File | Size | Needs |
+|---|---|---|
+| `FloatingClipboard-win-x64.exe` | ~68 MB | Nothing, .NET is bundled |
+| `FloatingClipboard-win-x64-fd.exe` | ~0.2 MB | [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
+
+Put the exe somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\FloatingClipboard`) before running it, since "Start with Windows" points at wherever the exe lives. The exe isn't code-signed, so Windows SmartScreen may warn on first launch: choose **More info → Run anyway**.
+
 ## Usage
 
 | Action | What it does |
@@ -47,7 +58,7 @@ Left-click the tray icon to show or hide the panel.
 ## Requirements
 
 - Windows 10 or 11 (64-bit)
-- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) to run, or the .NET 8 SDK to build
+- The .NET 8 SDK to build from source
 
 For the frosted-glass look, turn on **Settings → Personalization → Colors → Transparency effects**. With it off, the panel falls back to a translucent dark background.
 

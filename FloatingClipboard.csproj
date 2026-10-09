@@ -9,6 +9,7 @@
     <Nullable>disable</Nullable>
     <RootNamespace>FloatingClipboard</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
 </Project>
