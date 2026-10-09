@@ -103,3 +103,7 @@ History is stored as plain text, so use **Clear history** if you copied somethin
 | `MainWindow.xaml(.cs)` | Panel UI, clipboard listener, shelf drag & drop, paste, persistence |
 | `Native.cs` | Win32 interop (keyboard hook, DWM, acrylic, focus, simulated <kbd>Ctrl</kbd>+<kbd>V</kbd>) |
 | `app.ico` | App and tray icon |
+
+## License
+
+[MIT](LICENSE)
