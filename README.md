@@ -8,6 +8,7 @@
 
 - **Hold <kbd>Alt</kbd>** to pop up a floating, always-on-top acrylic glass panel next to your cursor. Hold again to hide it.
 - **File shelf**: drag files or folders onto the panel to park them, then drag them out into any other app (Explorer, chat apps, editors, browsers…).
+  - The panel starts as a small square and grows with the number of files, up to 5 × 4 items; beyond that it scrolls instead of covering the screen.
   - Hover an item and click **✕** to remove it from the shelf. This never deletes the file itself.
   - Double-click an item to open it.
 - **Clipboard history**, hidden by default. **Tap <kbd>Alt</kbd>** while the panel is open to expand it.

@@ -117,6 +117,9 @@ namespace FloatingClipboard
             Load();
             History.ItemsSource = historyItems;
             Shelf.ItemsSource = shelfItems;
+            shelfItems.CollectionChanged += (_, _) => UpdateShelfSize();
+            UpdateShelfSize();
+            SizeChanged += (_, _) => KeepOnScreen(); // growing must never push the panel off screen
             CollectionViewSource.GetDefaultView(historyItems).Filter = o => Matches((Item)o, Search.Text);
             SourceInitialized += (_, _) => Init();
             new WindowInteropHelper(this).EnsureHandle(); // create the HWND now: clipboard updates must arrive before the window is ever shown
@@ -177,12 +180,14 @@ namespace FloatingClipboard
             var fg = Native.GetForegroundWindow();
             if (fg != hwnd) prev = fg;
 
-            var dpi = VisualTreeHelper.GetDpi(this);
-            var c = System.Windows.Forms.Cursor.Position;
-            Left = c.X / dpi.DpiScaleX - Width / 2;
-            Top = c.Y / dpi.DpiScaleY - 40;
             Search.Clear();
             SetExpanded(false);
+            // Window sizes to content, so measure it to center on the cursor before showing
+            Root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var dpi = VisualTreeHelper.GetDpi(this);
+            var c = System.Windows.Forms.Cursor.Position;
+            Left = c.X / dpi.DpiScaleX - Root.DesiredSize.Width / 2;
+            Top = c.Y / dpi.DpiScaleY - Root.DesiredSize.Height / 2;
             Show();
             KeepOnScreen(); // ActualWidth is still 0 before the first show, so clamp again afterwards
             Native.ForceForeground(hwnd);
@@ -192,6 +197,7 @@ namespace FloatingClipboard
         public void SetExpanded(bool on)
         {
             HistoryPanel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            UpdateShelfSize();
             UpdateLayout();
             KeepOnScreen();
             if (!on || !IsVisible) return;
@@ -200,8 +206,26 @@ namespace FloatingClipboard
             Search.Focus();
         }
 
+        // Shelf grows with its items: a small square when (nearly) empty, up to MaxCols x MaxRows cells, then it scrolls
+        const int CellW = 82, CellH = 78, MaxCols = 5, MaxRows = 4, HistoryWidth = 340;
+        const int ListChrome = 10; // ListBox border (1+1) + template padding (1+1) + Padding (3+3)
+
+        void UpdateShelfSize()
+        {
+            // ponytail: WPF won't size a window below SystemParameters.MinimumWindowTrackWidth, so that is the smallest square;
+            // going smaller needs a native window subclass to rewrite WM_GETMINMAXINFO before WPF reads it
+            double min = SystemParameters.MinimumWindowTrackWidth - Root.Padding.Left - Root.Padding.Right
+                         - Root.BorderThickness.Left - Root.BorderThickness.Right;
+            int n = shelfItems.Count, cols = Math.Clamp(n, 1, MaxCols), rows = Math.Clamp((n + cols - 1) / cols, 1, MaxRows);
+            double w = cols * CellW + ListChrome + (n > MaxCols * MaxRows ? SystemParameters.VerticalScrollBarWidth : 0);
+            Shelf.Height = Math.Max(rows * CellH + ListChrome, min);
+            Shelf.Width = Math.Max(HistoryPanel.Visibility == Visibility.Visible ? Math.Max(w, HistoryWidth) : w, min);
+            HistoryPanel.Width = Shelf.Width;
+        }
+
         void KeepOnScreen()
         {
+            if (double.IsNaN(Left) || double.IsNaN(Top)) return; // not positioned yet
             var dpi = VisualTreeHelper.GetDpi(this);
             var wa = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(
                 (int)((Left + ActualWidth / 2) * dpi.DpiScaleX), (int)(Top * dpi.DpiScaleY))).WorkingArea;
