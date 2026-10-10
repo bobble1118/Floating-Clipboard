@@ -1,0 +1,33 @@
+﻿Floating Clipboard - how to use
+
+SHOW / HIDE
+  Hold Alt (~0.45 s)               Show or hide the panel next to your cursor
+  Esc                              Hide the panel
+
+The panel never takes focus (like Win+V): your text cursor stays where it was.
+
+FILE SHELF (top)
+  Drag files onto the panel        Keep them for later
+  Drag an item out                 Copy it into another app
+  Double-click an item             Open it
+  Hover + ✕                        Remove one item from the shelf
+  Ctrl+Del (panel open)            Clear the whole shelf
+  Files are never deleted, only removed from the shelf.
+
+CLIPBOARD HISTORY (bottom)
+  Tap Alt (panel open)             Expand / collapse the history
+  Click an item                    Paste it where your cursor is
+                                   (the panel stays open for more)
+  Click the search box             Type to search
+
+AFTER CLICKING THE SEARCH BOX (panel has focus)
+  Down / Enter                     Pick / paste a history item
+  Ctrl+click or Shift+click        Select several, then Enter pastes them all
+  Del                              Remove the selected item
+  Ctrl+P                           Pin / unpin the panel position
+
+TRAY ICON (bottom-right of the taskbar)
+  Left-click                       Show / hide the panel
+  Right-click                      Settings: start with Windows, default
+                                   position, Alt hold time, history limit,
+                                   clear history / shelf, quit

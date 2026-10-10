@@ -61,6 +61,13 @@ namespace FloatingClipboard
             if (attached) AttachThreadInput(a, b, false);
         }
 
+        // An unassigned key sent while Alt is down, so its release isn't a lone Alt tap (which moves focus to the menu, e.g. Chrome's ⋮)
+        public static void MaskAlt()
+        {
+            keybd_event(0xE8, 0, 0, UIntPtr.Zero);
+            keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+        }
+
         public static void SendCtrlV()
         {
             keybd_event(0x11, 0, 0, UIntPtr.Zero);

@@ -103,6 +103,7 @@ namespace FloatingClipboard
         public readonly AltHold Alt;
         readonly Settings settings;
         readonly Stopwatch clock = Stopwatch.StartNew();
+        DataObject pasted; // what we last put on the clipboard ourselves
         Native.HookProc hookProc; // keep a reference, or the GC collects the delegate and the hook crashes
         IntPtr hwnd, prev;
         Point? dragStart;
@@ -138,7 +139,7 @@ namespace FloatingClipboard
                 @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency", 1);
             if (transparency is not 0) Native.EnableAcrylic(hwnd, 0x30201A18); // tint, AABBGGRR
             else Root.Background = new SolidColorBrush(Color.FromArgb(0xD8, 0x1C, 0x1C, 0x24));
-            Native.SetWindowLong(hwnd, -20, Native.GetWindowLong(hwnd, -20) | 0x80); // WS_EX_TOOLWINDOW: hide from Alt+Tab
+            Native.SetWindowLong(hwnd, -20, Native.GetWindowLong(hwnd, -20) | 0x80 | 0x08000000); // WS_EX_TOOLWINDOW: hide from Alt+Tab; WS_EX_NOACTIVATE: clicks keep focus in the target app, like Win+V
             Native.AddClipboardFormatListener(hwnd);
 
             // ponytail: the hook runs on the UI thread; if the UI stalls past LowLevelHooksTimeout Windows drops it. Move it to its own thread if that ever happens.
@@ -147,7 +148,14 @@ namespace FloatingClipboard
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
             timer.Tick += (_, _) =>
             {
-                if (Alt.Poll(clock.Elapsed.TotalSeconds, Native.GetAsyncKeyState(0x12) < 0)) Toggle();
+                // Track the last outside window the user focused, so clicking a target app then our item pastes there
+                var fg = Native.GetForegroundWindow();
+                if (fg != hwnd && fg != IntPtr.Zero) prev = fg;
+                if (Alt.Poll(clock.Elapsed.TotalSeconds, Native.GetAsyncKeyState(0x12) < 0))
+                {
+                    Native.MaskAlt(); // Alt is still held here
+                    Toggle();
+                }
             };
             timer.Start();
         }
@@ -158,9 +166,24 @@ namespace FloatingClipboard
             {
                 var k = Marshal.PtrToStructure<Native.KBDLLHOOKSTRUCT>(lp);
                 int msg = (int)wp;
+                // The panel never takes focus, so the app underneath sees our Alt presses too: mask them.
+                // Keys sent from inside the hook arrive before the event being hooked, so mask on release, while Alt is still down.
+                if ((k.flags & 0x10) == 0 && (msg == 0x101 || msg == 0x105) && k.vkCode is 0x12 or 0xA4 or 0xA5 && IsVisible) Native.MaskAlt();
                 // Ignore injected keys (e.g. our own Ctrl+V). While the window is open, a single Alt tap expands / collapses the history.
                 if ((k.flags & 0x10) == 0 && Alt.Key((int)k.vkCode, msg == 0x100 || msg == 0x104, clock.Elapsed.TotalSeconds) && IsVisible)
                     Dispatcher.BeginInvoke(new Action(() => SetExpanded(HistoryPanel.Visibility != Visibility.Visible)));
+                // Without focus the window never sees Esc: close it here and swallow the key so the app underneath doesn't get it
+                if ((k.flags & 0x10) == 0 && k.vkCode == 0x1B && msg == 0x100 && IsVisible && !IsActive)
+                {
+                    Dispatcher.BeginInvoke(new Action(Hide));
+                    return (IntPtr)1;
+                }
+                // Ctrl+Delete while the panel is open: clear the whole shelf (paths only, files are never touched)
+                if ((k.flags & 0x10) == 0 && k.vkCode == 0x2E && msg == 0x100 && IsVisible && Native.GetAsyncKeyState(0x11) < 0)
+                {
+                    Dispatcher.BeginInvoke(new Action(ClearShelf));
+                    return (IntPtr)1;
+                }
             }
             return Native.CallNextHookEx(IntPtr.Zero, code, wp, lp);
         }
@@ -197,8 +220,6 @@ namespace FloatingClipboard
             UpdatePinLook();
             Show();
             KeepOnScreen(); // ActualWidth is still 0 before the first show, so clamp again afterwards
-            Native.ForceForeground(hwnd);
-            Activate();
         }
 
         public void SetExpanded(bool on)
@@ -207,14 +228,17 @@ namespace FloatingClipboard
             UpdateShelfSize();
             UpdateLayout();
             KeepOnScreen();
-            if (!on || !IsVisible) return;
+        }
+
+        // The panel stays unfocused like Win+V; only clicking the search box takes focus so it can be typed in
+        void Search_MouseDown(object s, MouseButtonEventArgs e)
+        {
             Native.ForceForeground(hwnd);
             Activate();
-            Search.Focus();
         }
 
         // Shelf grows with its items: a small square when (nearly) empty, up to MaxCols x MaxRows cells, then it scrolls
-        const int CellW = 82, CellH = 78, MaxCols = 5, MaxRows = 4, HistoryWidth = 340;
+        const int CellW = 82, CellH = 78, MaxCols = 3, MaxRows = 4, HistoryWidth = 340;
         const int ListChrome = 10; // ListBox border (1+1) + template padding (1+1) + Padding (3+3)
 
         void UpdateShelfSize()
@@ -286,6 +310,7 @@ namespace FloatingClipboard
         // ---------- clipboard ----------
         void OnClipboard()
         {
+            if (pasted != null && Clipboard.IsCurrent(pasted)) return; // our own paste: don't reorder the list under the cursor
             Entry e = null;
             for (int i = 0; i < 5; i++)
             {
@@ -350,11 +375,16 @@ namespace FloatingClipboard
         void Paste(List<Entry> entries)
         {
             if (entries.Count == 0) return;
-            try { Clipboard.SetDataObject(MakeData(entries, drag: false), true); }
-            catch (ExternalException) { return; }
-            Hide();
+            var data = MakeData(entries, drag: false);
+            for (int i = 0; ; i++)
+            {
+                try { Clipboard.SetDataObject(data, true); break; }
+                catch (ExternalException) when (i < 20) { Thread.Sleep(50); } // clipboard syncers (e.g. Parsec) hold it open briefly; retry
+                catch (ExternalException) { return; }
+            }
+            pasted = data; // the panel stays open so several items can be pasted in a row
             if (prev == IntPtr.Zero) return;
-            Native.SetForegroundWindow(prev);
+            Native.ForceForeground(prev);
             var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
             t.Tick += (_, _) => { t.Stop(); Native.SendCtrlV(); };
             t.Start();
@@ -416,9 +446,13 @@ namespace FloatingClipboard
             Save();
         }
 
-        void History_DoubleClick(object s, MouseButtonEventArgs e)
+        // Single click pastes the clicked item; a drag (dragStart cleared) or Ctrl/Shift multi-select doesn't
+        void History_Click(object s, MouseButtonEventArgs e)
         {
-            if (OnItem(History, e)) Paste(Selected(History));
+            if (dragStart != null && Keyboard.Modifiers == ModifierKeys.None &&
+                // The ListBox captures the mouse on press, so OriginalSource is the ListBox itself: hit-test the cursor position instead
+                ItemsControl.ContainerFromElement(History, History.InputHitTest(e.GetPosition(History)) as DependencyObject) is ListBoxItem { DataContext: Item it })
+                Paste(new List<Entry> { it.E });
         }
 
         void Shelf_DoubleClick(object s, MouseButtonEventArgs e)

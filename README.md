@@ -7,13 +7,14 @@
 ## Features
 
 - **Hold <kbd>Alt</kbd>** to pop up a floating, always-on-top acrylic glass panel next to your cursor. Hold again to hide it.
+  - Like <kbd>Win</kbd>+<kbd>V</kbd>, the panel never takes focus: your caret stays where it was, so clicking an item pastes right there. The panel stays open, so you can paste several items in a row.
 - **File shelf**: drag files or folders onto the panel to park them, then drag them out into any other app (Explorer, chat apps, editors, browsers…).
-  - The panel starts as a small square and grows with the number of files, up to 5 × 4 items; beyond that it scrolls instead of covering the screen.
+  - The panel starts as a small square and grows with the number of files, up to 3 × 4 items (a single item sits centered); beyond that it scrolls instead of covering the screen.
   - Hover an item and click **✕** to remove it from the shelf. This never deletes the file itself.
   - Double-click an item to open it.
 - **Clipboard history**, hidden by default. **Tap <kbd>Alt</kbd>** while the panel is open to expand it.
   - Records text, images (stored as PNG) and copied files, newest first; copying something again moves it back to the top.
-  - Type to search, then press <kbd>Enter</kbd> or double-click to paste into the window you were using before.
+  - Click the search box to type (only then does the panel take focus), then click an item (or press <kbd>Enter</kbd>) to paste it into the window you were using before.
   - History items can also be dragged out.
 - **Privacy**: anything marked by password managers as "do not record" (`ExcludeClipboardContentFromMonitorProcessing`) is skipped.
 - **Tray icon** with settings, and **starts with Windows** by default.
@@ -24,10 +25,11 @@ Grab the latest build from [Releases](https://github.com/bobble1118/Floating-Cli
 
 | File | Size | Needs |
 |---|---|---|
+| `FloatingClipboard-Setup.exe` (recommended) | ~47 MB | Nothing: installs per user, adds a Start menu shortcut, shows a how-to page |
 | `FloatingClipboard-win-x64.exe` | ~68 MB | Nothing, .NET is bundled |
 | `FloatingClipboard-win-x64-fd.exe` | ~0.2 MB | [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
 
-Put the exe somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\FloatingClipboard`) before running it, since "Start with Windows" points at wherever the exe lives. The exe isn't code-signed, so Windows SmartScreen may warn on first launch: choose **More info → Run anyway**.
+If you use a bare exe instead of the installer, put it somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\FloatingClipboard`) before running it, since "Start with Windows" points at wherever the exe lives. The exe isn't code-signed, so Windows SmartScreen may warn on first launch: choose **More info → Run anyway**.
 
 ## Usage
 
@@ -38,7 +40,8 @@ Put the exe somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\FloatingClipboard
 | Drag files onto the shelf | Keep them for later |
 | Drag an item out | Copy it into another app |
 | Hover + **✕** or <kbd>Del</kbd> | Remove the item |
-| <kbd>↓</kbd> / <kbd>Enter</kbd> / double-click | Select / paste a history item |
+| <kbd>Ctrl</kbd>+<kbd>Del</kbd> while the panel is open | Clear the whole shelf (files themselves are untouched) |
+| Click / <kbd>↓</kbd> + <kbd>Enter</kbd> | Paste a history item (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click to multi-select) |
 | <kbd>Ctrl</kbd>+<kbd>P</kbd> | Pin / unpin the panel at its current position (accent border = pinned) |
 | <kbd>Esc</kbd> | Hide the panel |
 | Drag the panel's edge | Move it |
@@ -73,6 +76,15 @@ dotnet build -c Release
 .\bin\Release\net8.0-windows\FloatingClipboard.exe
 ```
 
+### Installer
+
+The installer (`installer/FloatingClipboard.iss`, built with [Inno Setup 6](https://jrsoftware.org/isinfo.php)) installs per user without admin rights, adds a Start menu shortcut, and shows a page of shortcuts and basic usage (`installer/howto.txt`) at the end. Uninstalling also removes the "Start with Windows" entry.
+
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o bin\publish
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer\FloatingClipboard.iss   # -> bin\installer\FloatingClipboard-Setup.exe
+```
+
 The app lives in the tray and never shows a taskbar button. Only one instance can run at a time.
 
 Command-line flags:
@@ -105,6 +117,7 @@ History is stored as plain text, so use **Clear history** if you copied somethin
 | `MainWindow.xaml(.cs)` | Panel UI, clipboard listener, shelf drag & drop, paste, persistence |
 | `Native.cs` | Win32 interop (keyboard hook, DWM, acrylic, focus, simulated <kbd>Ctrl</kbd>+<kbd>V</kbd>) |
 | `app.ico` | App and tray icon |
+| `installer/` | Inno Setup script and the "how to use" page shown by the installer |
 
 ## License
 
